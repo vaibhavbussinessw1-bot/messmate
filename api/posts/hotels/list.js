@@ -17,15 +17,23 @@ const postSchema = new mongoose.Schema({
 });
 const Post = mongoose.models.Post || mongoose.model('Post', postSchema);
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
   
   try {
+    console.log('Fetching hotels list...');
     await connectDB();
     const hotels = await Post.distinct('hotelName');
+    console.log(`Found ${hotels.length} hotels`);
     res.status(200).json(hotels);
   } catch (error) {
     console.error('Hotels list error:', error);
     res.status(500).json({ error: error.message });
   }
-};
+}

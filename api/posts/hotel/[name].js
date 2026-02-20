@@ -18,7 +18,7 @@ const postSchema = new mongoose.Schema({
 postSchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
 const Post = mongoose.models.Post || mongoose.model('Post', postSchema);
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -33,10 +33,13 @@ module.exports = async (req, res) => {
     const { name } = req.query;
     const hotelName = decodeURIComponent(name);
     
-    const posts = await Post.find({ hotelName }).sort({ createdAt: -1 });
+    console.log('Filtering posts by hotel:', hotelName);
+    const posts = await Post.find({ hotelName }).sort({ createdAt: -1 }).limit(50);
+    console.log(`Found ${posts.length} posts for ${hotelName}`);
+    
     res.status(200).json(posts);
   } catch (error) {
     console.error('Filter posts error:', error);
     res.status(500).json({ error: error.message });
   }
-};
+}
