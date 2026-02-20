@@ -1,0 +1,152 @@
+.upload-form {
+  padding: 20px;
+  background: white;
+  margin: 15px;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  animation: fadeIn 0.5s ease;
+  border: 2px solid transparent;
+  background-image: linear-gradient(white, white), 
+                    linear-gradient(135deg, #667eea, #764ba2);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.upload-form h2 {
+  font-size: 18px;
+  margin-bottom: 15px;
+  color: #2d3748;
+  font-weight: 700;
+}
+
+.auto-delete-notice {
+  text-align: center;
+  font-size: 12px;
+  color: #764ba2;
+  margin-top: 10px;
+  font-weight: 600;
+  background: #f0f3ff;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.upload-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.image-upload {
+  margin-bottom: 10px;
+}
+
+#image-input {
+  display: none;
+}
+
+.image-label {
+  display: block;
+  width: 100%;
+  height: 200px;
+  border: 3px dashed #667eea;
+  border-radius: 16px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #f0f3ff 0%, #e8ebff 100%);
+}
+
+.image-label:hover {
+  border-color: #764ba2;
+  transform: scale(1.02);
+}
+
+.image-label img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #667eea;
+}
+
+.placeholder span {
+  font-size: 56px;
+  margin-bottom: 10px;
+  animation: bounce 2s infinite;
+}
+
+.placeholder p {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.upload-form input[type="text"] {
+  padding: 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  background: #f7fafc;
+}
+
+.upload-form input[type="text"]:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.upload-form button {
+  padding: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  letter-spacing: 0.5px;
+}
+
+.upload-form button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.upload-form button:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.upload-form button:active:not(:disabled) {
+  transform: translateY(0);
+}
