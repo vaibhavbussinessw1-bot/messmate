@@ -39,8 +39,10 @@ function UploadForm({ username, onSuccess }) {
       onSuccess();
       alert('Posted successfully! 🎉');
     } catch (error) {
-      console.error('Upload error:', error.response?.data || error.message);
-      alert(`Failed to upload: ${error.response?.data?.error || error.message}`);
+      console.error('Upload error:', error);
+      const errorMsg = error.response?.data?.error || error.response?.data || error.message || 'Unknown error';
+      console.log('Error details:', errorMsg);
+      alert(`Failed to upload: ${typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : errorMsg}`);
     } finally {
       setLoading(false);
     }
