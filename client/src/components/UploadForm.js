@@ -27,14 +27,14 @@ function UploadForm({ username, onSuccess }) {
     formData.append('hotelName', hotelName);
 
     try {
-      const API_URL = process.env.REACT_APP_API_URL || '';
-      await axios.post(`${API_URL}/api/posts`, formData);
+      await axios.post('/api/posts', formData);
       setImage(null);
       setPreview(null);
       setHotelName('');
       onSuccess();
       alert('Posted successfully!');
     } catch (error) {
+      console.error('Upload error:', error);
       alert('Failed to upload. Please try again.');
     } finally {
       setLoading(false);

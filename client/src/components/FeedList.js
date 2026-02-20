@@ -10,12 +10,13 @@ function FeedList({ selectedHotel, refresh }) {
     setLoading(true);
     try {
       const url = selectedHotel 
-        ? `/api/posts/hotel/${selectedHotel}`
+        ? `/api/posts/hotel/${encodeURIComponent(selectedHotel)}`
         : '/api/posts';
       const response = await axios.get(url);
       setPosts(response.data);
     } catch (error) {
-      console.error('Failed to fetch posts');
+      console.error('Failed to fetch posts:', error);
+      setPosts([]); // Set empty array on error
     } finally {
       setLoading(false);
     }

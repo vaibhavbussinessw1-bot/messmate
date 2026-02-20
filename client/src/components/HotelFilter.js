@@ -11,11 +11,11 @@ function HotelFilter({ selectedHotel, onSelectHotel }) {
 
   const fetchHotels = async () => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || '';
-      const response = await axios.get(`${API_URL}/api/posts/hotels/list`);
+      const response = await axios.get('/api/posts/hotels/list');
       setHotels(response.data);
     } catch (error) {
-      console.error('Failed to fetch hotels');
+      console.error('Failed to fetch hotels:', error);
+      setHotels([]); // Set empty array on error
     }
   };
 
