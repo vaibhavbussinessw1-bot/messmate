@@ -6,17 +6,12 @@ function FeedList({ selectedHotel, refresh }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchPosts();
-  }, [selectedHotel, refresh]);
-
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const API_URL = process.env.REACT_APP_API_URL || '';
       const url = selectedHotel 
-        ? `${API_URL}/api/posts/hotel/${selectedHotel}`
-        : `${API_URL}/api/posts`;
+        ? `/api/posts/hotel/${selectedHotel}`
+        : '/api/posts';
       const response = await axios.get(url);
       setPosts(response.data);
     } catch (error) {
@@ -25,6 +20,11 @@ function FeedList({ selectedHotel, refresh }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedHotel, refresh]);
 
   const formatMarathiDate = (dateString) => {
     const date = new Date(dateString);
@@ -63,8 +63,6 @@ function FeedList({ selectedHotel, refresh }) {
       </div>
     );
   }
-
-  const API_URL = process.env.REACT_APP_API_URL || '';
 
   return (
     <div className="feed-list">
