@@ -1,9 +1,8 @@
-// Vercel Serverless Function - Using ImgBB for image hosting
+// Vercel Serverless Function - Simple base64 image upload
 const mongoose = require('mongoose');
 const formidable = require('formidable');
 const fs = require('fs');
-const https = require('https');
-const FormData = require('form-data');
+const axios = require('axios');
 
 // MongoDB Connection
 let cachedDb = null;
@@ -36,47 +35,36 @@ const postSchema = new mongoose.Schema({
 
 const Post = mongoose.models.Post || mongoose.model('Post', postSchema);
 
-// Upload image to ImgBB
+// Upload to ImgBB using base64
 async function uploadToImgBB(filePath) {
-  return new Promise((resolve, reject) => {
-    const formData = new FormData();
-    formData.append('image', fs.createReadStream(filePath));
+  try {
+    // Read file as base64
+    const imageBuffer = fs.readFileSync(filePath);
+    const base64Image = imageBuffer.toString('base64');
     
-    // Using free ImgBB API (no key needed for basic uploads)
-    const options = {
-      hostname: 'api.imgbb.com',
-      path: '/1/upload?key=d2d52d7a0e7e1b9c8f6e4d3c2b1a0f9e',
-      method: 'POST',
-      headers: formData.getHeaders()
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-      
-      res.on('end', () => {
-        try {
-          const response = JSON.parse(data);
-          if (response.success && response.data && response.data.url) {
-            resolve(response.data.url);
-          } else {
-            reject(new Error('ImgBB upload failed: ' + (response.error?.message || 'Unknown error')));
-          }
-        } catch (error) {
-          reject(new Error('Failed to parse ImgBB response'));
+    // Upload to ImgBB
+    const formData = new URLSearchParams();
+    formData.append('image', base64Image);
+    
+    const response = await axios.post(
+      'https://api.imgbb.com/1/upload?key=d2d52d7a0e7e1b9c8f6e4d3c2b1a0f9e',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
         }
-      });
-    });
-
-    req.on('error', (error) => {
-      reject(new Error('ImgBB request failed: ' + error.message));
-    });
-
-    formData.pipe(req);
-  });
+      }
+    );
+    
+    if (response.data && response.data.success && response.data.data && response.data.data.url) {
+      return response.data.data.url;
+    } else {
+      throw new Error('ImgBB upload failed');
+    }
+  } catch (error) {
+    console.error('ImgBB upload error:', error.response?.data || error.message);
+    throw new Error('Image upload failed: ' + (error.response?.data?.error?.message || error.message));
+  }
 }
 
 // Disable body parser
@@ -147,12 +135,12 @@ export default async function handler(req, res) {
               return resolve();
             }
 
-            console.log('Uploading to ImgBB...');
+            console.log('📤 Uploading image...');
             
             // Upload to ImgBB
             const imageUrl = await uploadToImgBB(imageFile.filepath);
             
-            console.log('Upload successful:', imageUrl);
+            console.log('✅ Upload successful:', imageUrl);
 
             // Save to MongoDB
             const newPost = new Post({
@@ -162,14 +150,16 @@ export default async function handler(req, res) {
             });
 
             await newPost.save();
-            console.log('Saved to MongoDB');
+            console.log('✅ Saved to MongoDB:', newPost._id);
 
             // Cleanup
             try {
               if (fs.existsSync(imageFile.filepath)) {
                 fs.unlinkSync(imageFile.filepath);
               }
-            } catch (e) {}
+            } catch (e) {
+              console.log('Cleanup skipped');
+            }
 
             res.status(201).json({
               success: true,
@@ -178,7 +168,7 @@ export default async function handler(req, res) {
             resolve();
 
           } catch (error) {
-            console.error('Upload error:', error);
+            console.error('❌ Upload error:', error);
             res.status(500).json({ 
               error: error.message || 'Upload failed'
             });
@@ -191,7 +181,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
 
   } catch (error) {
-    console.error('Handler error:', error);
+    console.error('❌ Handler error:', error);
     return res.status(500).json({ 
       error: error.message || 'Server error'
     });
