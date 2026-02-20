@@ -1,150 +1,198 @@
-// Direct Vercel serverless function (no Express)
+// Vercel Serverless Function for Posts
 const mongoose = require('mongoose');
 const cloudinary = require('cloudinary').v2;
 const formidable = require('formidable');
 const fs = require('fs');
 
-// Configure Cloudinary
+// Cloudinary Configuration
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dusmps71b',
+  api_key: process.env.CLOUDINARY_API_KEY || '967577766443571',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'AKuQbIETmfG1eO-qW4L-NCdMLTY'
 });
 
-// MongoDB connection
+// MongoDB Connection
 let cachedDb = null;
 async function connectDB() {
-  if (cachedDb) return cachedDb;
-  const db = await mongoose.connect(process.env.MONGODB_URI);
-  cachedDb = db;
-  return db;
+  if (cachedDb) {
+    return cachedDb;
+  }
+  
+  try {
+    const connection = await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    cachedDb = connection;
+    console.log('✅ MongoDB connected');
+    return connection;
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
+    throw error;
+  }
 }
 
 // Post Schema
 const postSchema = new mongoose.Schema({
-  username: String,
-  hotelName: String,
-  imageUrl: String,
-  createdAt: { type: Date, default: Date.now }
+  username: { type: String, required: true },
+  hotelName: { type: String, required: true },
+  imageUrl: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now, expires: 86400 } // Auto-delete after 24 hours
 });
-postSchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
+
 const Post = mongoose.models.Post || mongoose.model('Post', postSchema);
 
-// Disable body parsing - MUST be at top level
+// Disable body parser for file uploads
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-// Main handler
+// Main Handler
 export default async function handler(req, res) {
-  // Enable CORS
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
+  // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   try {
-    console.log('Connecting to MongoDB...');
+    // Connect to MongoDB
     await connectDB();
-    console.log('MongoDB connected');
 
+    // GET - Fetch all posts
+    if (req.method === 'GET') {
+      try {
+        const posts = await Post.find()
+          .sort({ createdAt: -1 })
+          .limit(50)
+          .lean();
+        
+        console.log(`✅ Fetched ${posts.length} posts`);
+        return res.status(200).json(posts);
+      } catch (error) {
+        console.error('❌ Error fetching posts:', error);
+        return res.status(500).json({ 
+          error: 'Failed to fetch posts',
+          message: error.message 
+        });
+      }
+    }
+
+    // POST - Upload new post
     if (req.method === 'POST') {
-      console.log('Processing POST request...');
-      
-      // Parse form data
-      const form = formidable({
-        maxFileSize: 10 * 1024 * 1024, // 10MB
-        keepExtensions: true,
-      });
-      
       return new Promise((resolve) => {
+        const form = formidable({
+          maxFileSize: 10 * 1024 * 1024, // 10MB
+          keepExtensions: true,
+          multiples: false,
+        });
+
         form.parse(req, async (err, fields, files) => {
           if (err) {
-            console.error('Form parse error:', err);
-            res.status(500).json({ error: 'Failed to parse form: ' + err.message });
+            console.error('❌ Form parsing error:', err);
+            res.status(400).json({ 
+              error: 'Failed to parse upload',
+              message: err.message 
+            });
             return resolve();
           }
 
           try {
-            console.log('Form parsed:', { fields, files: Object.keys(files) });
-            
+            // Extract fields
             const username = Array.isArray(fields.username) ? fields.username[0] : fields.username;
             const hotelName = Array.isArray(fields.hotelName) ? fields.hotelName[0] : fields.hotelName;
             const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
 
-            if (!imageFile || !imageFile.filepath) {
-              console.error('No image file found');
-              res.status(400).json({ error: 'No image provided' });
+            // Validation
+            if (!username || !hotelName) {
+              res.status(400).json({ error: 'Username and hotel name are required' });
               return resolve();
             }
 
-            console.log('Uploading to Cloudinary:', {
-              filepath: imageFile.filepath,
+            if (!imageFile || !imageFile.filepath) {
+              res.status(400).json({ error: 'Image file is required' });
+              return resolve();
+            }
+
+            console.log('📤 Uploading to Cloudinary...', {
+              file: imageFile.originalFilename,
               size: imageFile.size,
-              mimetype: imageFile.mimetype
+              type: imageFile.mimetype
             });
 
-            // Upload to Cloudinary WITHOUT folder (root level)
-            const result = await cloudinary.uploader.upload(imageFile.filepath, {
+            // Upload to Cloudinary
+            const uploadResult = await cloudinary.uploader.upload(imageFile.filepath, {
               resource_type: 'auto',
+              upload_preset: 'ml_default', // Use default preset
               transformation: [
-                { width: 800, height: 800, crop: 'limit' },
-                { quality: 'auto:good' }
+                { width: 1000, height: 1000, crop: 'limit' },
+                { quality: 'auto:good', fetch_format: 'auto' }
               ]
             });
 
-            console.log('Cloudinary success:', result.secure_url);
+            console.log('✅ Cloudinary upload successful:', uploadResult.secure_url);
 
             // Save to MongoDB
-            const post = new Post({
-              username: username || 'Anonymous',
-              hotelName: hotelName || 'Unknown',
-              imageUrl: result.secure_url
+            const newPost = new Post({
+              username: username.trim(),
+              hotelName: hotelName.trim(),
+              imageUrl: uploadResult.secure_url
             });
-            
-            await post.save();
-            console.log('MongoDB save success:', post._id);
 
-            // Clean up temp file
+            await newPost.save();
+            console.log('✅ Post saved to MongoDB:', newPost._id);
+
+            // Cleanup temp file
             try {
               if (fs.existsSync(imageFile.filepath)) {
                 fs.unlinkSync(imageFile.filepath);
               }
-            } catch (e) {
-              console.log('Cleanup skipped:', e.message);
+            } catch (cleanupError) {
+              console.log('⚠️ Temp file cleanup skipped');
             }
 
-            res.status(201).json(post);
+            // Success response
+            res.status(201).json({
+              success: true,
+              post: newPost
+            });
             resolve();
-          } catch (error) {
-            console.error('Upload error:', error);
-            const errorMessage = error.message || 'Unknown error occurred';
+
+          } catch (uploadError) {
+            console.error('❌ Upload error:', uploadError);
+            
+            let errorMessage = 'Upload failed';
+            
+            if (uploadError.http_code) {
+              errorMessage = `Cloudinary error (${uploadError.http_code}): ${uploadError.message}`;
+            } else if (uploadError.message) {
+              errorMessage = uploadError.message;
+            }
+
             res.status(500).json({ 
               error: errorMessage,
-              details: error.http_code ? `Cloudinary error: ${error.http_code}` : 'Server error'
+              details: uploadError.error?.message || 'Unknown error'
             });
             resolve();
           }
         });
       });
-    } else if (req.method === 'GET') {
-      console.log('Fetching posts...');
-      const posts = await Post.find().sort({ createdAt: -1 }).limit(50);
-      console.log(`Found ${posts.length} posts`);
-      res.status(200).json(posts);
-    } else {
-      res.status(405).json({ error: 'Method not allowed' });
     }
+
+    // Method not allowed
+    return res.status(405).json({ error: 'Method not allowed' });
+
   } catch (error) {
-    console.error('Handler error:', error);
-    const errorMessage = error.message || 'Unknown error occurred';
-    res.status(500).json({ 
-      error: errorMessage
+    console.error('❌ Handler error:', error);
+    return res.status(500).json({ 
+      error: 'Server error',
+      message: error.message 
     });
   }
 }

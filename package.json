@@ -7,5 +7,8 @@
     "install-server": "cd server && npm install",
     "build": "cd client && npm run build",
     "start": "cd server && npm start"
+  },
+  "dependencies": {
+    "cloudinary": "^2.9.0"
   }
 }
