@@ -5,9 +5,11 @@ import './FeedList.css';
 function FeedList({ selectedHotel, refresh }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchPosts = async () => {
     setLoading(true);
+    setError(null);
     try {
       const url = selectedHotel 
         ? `/api/posts/hotel/${encodeURIComponent(selectedHotel)}`
@@ -16,7 +18,8 @@ function FeedList({ selectedHotel, refresh }) {
       setPosts(response.data);
     } catch (error) {
       console.error('Failed to fetch posts:', error);
-      setPosts([]); // Set empty array on error
+      setError('Failed to load posts. Please refresh.');
+      setPosts([]);
     } finally {
       setLoading(false);
     }
@@ -47,35 +50,93 @@ function FeedList({ selectedHotel, refresh }) {
     const minutes = date.getMinutes();
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
-    hours = hours ? hours : 12; // 0 should be 12
+    hours = hours ? hours : 12;
     const minutesStr = minutes < 10 ? '0' + minutes : minutes;
     return `${hours}:${minutesStr} ${ampm}`;
   };
 
+  const getTimeAgo = (dateString) => {
+    const now = new Date();
+    const postDate = new Date(dateString);
+    const diffMs = now - postDate;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    
+    if (diffMins < 1) return 'आत्ताच';
+    if (diffMins < 60) return `${diffMins} मिनिटे आधी`;
+    if (diffHours < 24) return `${diffHours} तास आधी`;
+    return formatMarathiDate(dateString);
+  };
+
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <div className="loading">
+        <div className="spinner"></div>
+        <p>Loading delicious posts...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="error-state">
+        <p className="error-icon">⚠️</p>
+        <p>{error}</p>
+        <button onClick={fetchPosts} className="retry-btn">🔄 Retry</button>
+      </div>
+    );
   }
 
   if (posts.length === 0) {
     return (
       <div className="empty-state">
-        <p>🍽️</p>
-        <p>No posts yet. Be the first to share today's menu!</p>
+        <p className="empty-icon">🍽️</p>
+        <p className="empty-title">No posts yet!</p>
+        <p className="empty-subtitle">
+          {selectedHotel 
+            ? `No posts from ${selectedHotel} yet. Be the first!` 
+            : 'Be the first to share today\'s menu!'}
+        </p>
       </div>
     );
   }
 
   return (
     <div className="feed-list">
-      {posts.map((post) => (
-        <div key={post._id} className="post-card">
-          <img src={post.imageUrl} alt="Food" />
+      <div className="feed-header">
+        <h3>
+          {selectedHotel ? `📍 ${selectedHotel}` : '🔥 Latest Posts'}
+        </h3>
+        <span className="post-count">{posts.length} {posts.length === 1 ? 'post' : 'posts'}</span>
+      </div>
+      
+      {posts.map((post, index) => (
+        <div 
+          key={post._id} 
+          className="post-card"
+          style={{ animationDelay: `${index * 0.1}s` }}
+        >
+          <div className="post-image-container">
+            <img src={post.imageUrl} alt="Food" loading="lazy" />
+            <div className="image-overlay">
+              <span className="time-badge">{getTimeAgo(post.createdAt)}</span>
+            </div>
+          </div>
+          
           <div className="post-info">
-            <p className="hotel-name">🏨 {post.hotelName}</p>
-            <p className="post-date">
-              📅 {formatMarathiDate(post.createdAt)} • ⏰ {formatTime(post.createdAt)}
-            </p>
-            <p className="username">by {post.username}</p>
+            <div className="post-header-info">
+              <p className="hotel-name">🏨 {post.hotelName}</p>
+              <p className="username">👤 {post.username}</p>
+            </div>
+            
+            <div className="post-meta">
+              <p className="post-date">
+                📅 {formatMarathiDate(post.createdAt)}
+              </p>
+              <p className="post-time">
+                ⏰ {formatTime(post.createdAt)}
+              </p>
+            </div>
           </div>
         </div>
       ))}

@@ -1,40 +1,81 @@
 .hotel-filter {
+  padding: 15px;
   background: white;
-  padding: 15px 0;
   margin: 15px 15px 0 15px;
   border-radius: 20px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  position: sticky;
-  top: 80px;
-  z-index: 90;
+  animation: slideIn 0.5s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.filter-label {
+  margin-bottom: 12px;
+  padding-left: 5px;
+}
+
+.filter-label span {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2d3748;
+  letter-spacing: 0.3px;
 }
 
 .filter-scroll {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding: 0 20px;
-  -webkit-overflow-scrolling: touch;
+  padding: 5px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .filter-scroll::-webkit-scrollbar {
   display: none;
 }
 
-.filter-scroll button {
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+.filter-btn {
+  padding: 10px 18px;
   border: 2px solid #e2e8f0;
-  border-radius: 25px;
+  background: #f7fafc;
+  color: #4a5568;
+  border-radius: 20px;
   font-size: 14px;
   font-weight: 600;
-  white-space: nowrap;
   cursor: pointer;
   transition: all 0.3s ease;
-  color: #4a5568;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.filter-scroll button.active {
+.filter-icon {
+  font-size: 16px;
+}
+
+.filter-btn:hover {
+  border-color: #667eea;
+  background: #f0f3ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+}
+
+.filter-btn:active {
+  transform: translateY(0);
+}
+
+.filter-btn.active {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border-color: transparent;
@@ -42,6 +83,25 @@
   transform: scale(1.05);
 }
 
-.filter-scroll button:active {
-  transform: scale(0.95);
+.filter-btn.active:hover {
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+}
+
+.filter-skeleton {
+  width: 100px;
+  height: 38px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 20px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }

@@ -166,3 +166,87 @@
 .app-main {
   padding-bottom: 20px;
 }
+
+.modal-icon {
+  font-size: 64px;
+  margin-bottom: 15px;
+  animation: bounce 2s infinite;
+}
+
+.modal-note {
+  font-size: 12px;
+  color: #a0aec0;
+  margin-top: 15px;
+  font-weight: 500;
+}
+
+.username-btn {
+  font-size: 13px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.username-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.username-btn:active {
+  transform: translateY(0);
+}
+
+.scroll-top-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  z-index: 999;
+  animation: fadeInUp 0.3s ease;
+}
+
+.scroll-top-btn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.scroll-top-btn:active {
+  transform: translateY(-2px);
+}
+
+.app-footer {
+  text-align: center;
+  padding: 30px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  margin: 20px 15px 15px 15px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.app-footer p {
+  margin: 5px 0;
+  color: #2d3748;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.footer-note {
+  font-size: 13px !important;
+  color: #718096 !important;
+  font-weight: 500 !important;
+}
