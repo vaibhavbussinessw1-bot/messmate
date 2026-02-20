@@ -70,7 +70,7 @@ function FeedList({ selectedHotel, refresh }) {
     <div className="feed-list">
       {posts.map((post) => (
         <div key={post._id} className="post-card">
-          <img src={`${API_URL}${post.imageUrl}`} alt="Food" />
+          <img src={post.imageUrl} alt="Food" />
           <div className="post-info">
             <p className="hotel-name">🏨 {post.hotelName}</p>
             <p className="post-date">
