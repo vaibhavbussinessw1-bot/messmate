@@ -70,8 +70,23 @@ function UploadForm({ username, onSuccess }) {
       alert('🎉 Posted successfully! Your food pic is now live!');
     } catch (error) {
       console.error('Upload error:', error);
-      const errorMsg = error.response?.data?.error || error.message || 'Upload failed';
-      alert(`❌ Failed to upload: ${errorMsg}`);
+      
+      // Better error message extraction
+      let errorMsg = 'Upload failed';
+      
+      if (error.response?.data?.error) {
+        errorMsg = error.response.data.error;
+      } else if (error.response?.data?.details) {
+        errorMsg = error.response.data.details;
+      } else if (error.response?.data) {
+        errorMsg = typeof error.response.data === 'string' 
+          ? error.response.data 
+          : JSON.stringify(error.response.data);
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      alert(`❌ ${errorMsg}`);
     } finally {
       setLoading(false);
     }

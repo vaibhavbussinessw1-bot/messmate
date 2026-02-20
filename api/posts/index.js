@@ -89,10 +89,13 @@ export default async function handler(req, res) {
               mimetype: imageFile.mimetype
             });
 
-            // Upload to Cloudinary
+            // Upload to Cloudinary WITHOUT folder (root level)
             const result = await cloudinary.uploader.upload(imageFile.filepath, {
-              folder: 'messmate',
-              resource_type: 'auto'
+              resource_type: 'auto',
+              transformation: [
+                { width: 800, height: 800, crop: 'limit' },
+                { quality: 'auto:good' }
+              ]
             });
 
             console.log('Cloudinary success:', result.secure_url);
@@ -120,9 +123,10 @@ export default async function handler(req, res) {
             resolve();
           } catch (error) {
             console.error('Upload error:', error);
+            const errorMessage = error.message || 'Unknown error occurred';
             res.status(500).json({ 
-              error: 'Upload failed: ' + error.message,
-              stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+              error: errorMessage,
+              details: error.http_code ? `Cloudinary error: ${error.http_code}` : 'Server error'
             });
             resolve();
           }
@@ -138,9 +142,9 @@ export default async function handler(req, res) {
     }
   } catch (error) {
     console.error('Handler error:', error);
+    const errorMessage = error.message || 'Unknown error occurred';
     res.status(500).json({ 
-      error: 'Server error: ' + error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: errorMessage
     });
   }
 }
