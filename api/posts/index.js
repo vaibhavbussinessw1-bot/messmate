@@ -30,6 +30,13 @@ const postSchema = new mongoose.Schema({
 postSchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
 const Post = mongoose.models.Post || mongoose.model('Post', postSchema);
 
+// Disable body parsing for formidable
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 // Main handler
 module.exports = async (req, res) => {
   // Enable CORS
@@ -45,45 +52,68 @@ module.exports = async (req, res) => {
     await connectDB();
 
     if (req.method === 'POST') {
-      // Parse form data
-      const form = formidable({ multiples: false });
+      // Parse form data with proper Vercel configuration
+      const form = formidable({
+        maxFileSize: 10 * 1024 * 1024, // 10MB
+        keepExtensions: true,
+      });
       
-      form.parse(req, async (err, fields, files) => {
-        if (err) {
-          console.error('Form parse error:', err);
-          return res.status(500).json({ error: err.message });
-        }
-
-        try {
-          const username = fields.username[0] || fields.username;
-          const hotelName = fields.hotelName[0] || fields.hotelName;
-          const imageFile = files.image[0] || files.image;
-
-          if (!imageFile) {
-            return res.status(400).json({ error: 'No image provided' });
+      return new Promise((resolve) => {
+        form.parse(req, async (err, fields, files) => {
+          if (err) {
+            console.error('Form parse error:', err);
+            res.status(500).json({ error: 'Failed to parse form data: ' + err.message });
+            return resolve();
           }
 
-          // Upload to Cloudinary
-          const result = await cloudinary.uploader.upload(imageFile.filepath, {
-            folder: 'messmate'
-          });
+          try {
+            const username = Array.isArray(fields.username) ? fields.username[0] : fields.username;
+            const hotelName = Array.isArray(fields.hotelName) ? fields.hotelName[0] : fields.hotelName;
+            const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
 
-          // Save to MongoDB
-          const post = new Post({
-            username,
-            hotelName,
-            imageUrl: result.secure_url
-          });
-          await post.save();
+            if (!imageFile) {
+              res.status(400).json({ error: 'No image provided' });
+              return resolve();
+            }
 
-          // Clean up temp file
-          fs.unlinkSync(imageFile.filepath);
+            console.log('Uploading to Cloudinary...', {
+              filepath: imageFile.filepath,
+              size: imageFile.size
+            });
 
-          res.status(201).json(post);
-        } catch (error) {
-          console.error('Upload error:', error);
-          res.status(500).json({ error: error.message });
-        }
+            // Upload to Cloudinary
+            const result = await cloudinary.uploader.upload(imageFile.filepath, {
+              folder: 'messmate',
+              resource_type: 'auto'
+            });
+
+            console.log('Cloudinary upload success:', result.secure_url);
+
+            // Save to MongoDB
+            const post = new Post({
+              username,
+              hotelName,
+              imageUrl: result.secure_url
+            });
+            await post.save();
+
+            console.log('MongoDB save success:', post._id);
+
+            // Clean up temp file
+            try {
+              fs.unlinkSync(imageFile.filepath);
+            } catch (e) {
+              console.log('Temp file cleanup skipped');
+            }
+
+            res.status(201).json(post);
+            resolve();
+          } catch (error) {
+            console.error('Upload error:', error);
+            res.status(500).json({ error: 'Upload failed: ' + error.message });
+            resolve();
+          }
+        });
       });
     } else if (req.method === 'GET') {
       const posts = await Post.find().sort({ createdAt: -1 });
@@ -93,6 +123,6 @@ module.exports = async (req, res) => {
     }
   } catch (error) {
     console.error('Handler error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Server error: ' + error.message });
   }
 };
