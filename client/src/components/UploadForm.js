@@ -27,15 +27,20 @@ function UploadForm({ username, onSuccess }) {
     formData.append('hotelName', hotelName);
 
     try {
-      await axios.post('/api/posts', formData);
+      const response = await axios.post('/api/posts', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      console.log('Upload success:', response.data);
       setImage(null);
       setPreview(null);
       setHotelName('');
       onSuccess();
-      alert('Posted successfully!');
+      alert('Posted successfully! 🎉');
     } catch (error) {
-      console.error('Upload error:', error);
-      alert('Failed to upload. Please try again.');
+      console.error('Upload error:', error.response?.data || error.message);
+      alert(`Failed to upload: ${error.response?.data?.error || error.message}`);
     } finally {
       setLoading(false);
     }
