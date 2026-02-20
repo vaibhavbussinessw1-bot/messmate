@@ -69,23 +69,40 @@ function UploadForm({ username, onSuccess }) {
       // Success feedback
       alert('🎉 Posted successfully! Your food pic is now live!');
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('Full upload error:', error);
+      console.error('Error response:', error.response);
       
-      // Better error message extraction
+      // Extract error message properly
       let errorMsg = 'Upload failed';
       
-      if (error.response?.data?.error) {
-        errorMsg = error.response.data.error;
-      } else if (error.response?.data?.details) {
-        errorMsg = error.response.data.details;
-      } else if (error.response?.data) {
-        errorMsg = typeof error.response.data === 'string' 
-          ? error.response.data 
-          : JSON.stringify(error.response.data);
-      } else if (error.message) {
-        errorMsg = error.message;
+      try {
+        if (error.response) {
+          // Server responded with error
+          console.log('Response data:', error.response.data);
+          console.log('Response status:', error.response.status);
+          
+          if (typeof error.response.data === 'string') {
+            errorMsg = error.response.data;
+          } else if (error.response.data && error.response.data.error) {
+            errorMsg = error.response.data.error;
+          } else if (error.response.data && error.response.data.message) {
+            errorMsg = error.response.data.message;
+          } else {
+            errorMsg = `Server error (${error.response.status})`;
+          }
+        } else if (error.request) {
+          // Request made but no response
+          errorMsg = 'No response from server. Check your internet connection.';
+        } else {
+          // Error in request setup
+          errorMsg = error.message || 'Failed to send request';
+        }
+      } catch (parseError) {
+        console.error('Error parsing error:', parseError);
+        errorMsg = 'An unknown error occurred';
       }
       
+      console.log('Final error message:', errorMsg);
       alert(`❌ ${errorMsg}`);
     } finally {
       setLoading(false);
