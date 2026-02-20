@@ -17,7 +17,19 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/messmate'
 // Routes
 app.use('/api/posts', require('./routes/posts'));
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Health check
+app.get('/api', (req, res) => {
+  res.json({ message: 'MessMate API is running!' });
 });
+
+const PORT = process.env.PORT || 5000;
+
+// Only listen if not in serverless environment
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
+
