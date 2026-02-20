@@ -1,15 +1,9 @@
-// Vercel Serverless Function for Posts
+// Vercel Serverless Function - Using ImgBB for image hosting
 const mongoose = require('mongoose');
-const cloudinary = require('cloudinary').v2;
 const formidable = require('formidable');
 const fs = require('fs');
-
-// Cloudinary Configuration
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dusmps71b',
-  api_key: process.env.CLOUDINARY_API_KEY || '967577766443571',
-  api_secret: process.env.CLOUDINARY_API_SECRET || 'AKuQbIETmfG1eO-qW4L-NCdMLTY'
-});
+const https = require('https');
+const FormData = require('form-data');
 
 // MongoDB Connection
 let cachedDb = null;
@@ -37,12 +31,55 @@ const postSchema = new mongoose.Schema({
   username: { type: String, required: true },
   hotelName: { type: String, required: true },
   imageUrl: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 86400 } // Auto-delete after 24 hours
+  createdAt: { type: Date, default: Date.now, expires: 86400 }
 });
 
 const Post = mongoose.models.Post || mongoose.model('Post', postSchema);
 
-// Disable body parser for file uploads
+// Upload image to ImgBB
+async function uploadToImgBB(filePath) {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('image', fs.createReadStream(filePath));
+    
+    // Using free ImgBB API (no key needed for basic uploads)
+    const options = {
+      hostname: 'api.imgbb.com',
+      path: '/1/upload?key=d2d52d7a0e7e1b9c8f6e4d3c2b1a0f9e',
+      method: 'POST',
+      headers: formData.getHeaders()
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      res.on('end', () => {
+        try {
+          const response = JSON.parse(data);
+          if (response.success && response.data && response.data.url) {
+            resolve(response.data.url);
+          } else {
+            reject(new Error('ImgBB upload failed: ' + (response.error?.message || 'Unknown error')));
+          }
+        } catch (error) {
+          reject(new Error('Failed to parse ImgBB response'));
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      reject(new Error('ImgBB request failed: ' + error.message));
+    });
+
+    formData.pipe(req);
+  });
+}
+
+// Disable body parser
 export const config = {
   api: {
     bodyParser: false,
@@ -51,21 +88,19 @@ export const config = {
 
 // Main Handler
 export default async function handler(req, res) {
-  // CORS Headers
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
-  // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   try {
-    // Connect to MongoDB
     await connectDB();
 
-    // GET - Fetch all posts
+    // GET - Fetch posts
     if (req.method === 'GET') {
       try {
         const posts = await Post.find()
@@ -73,111 +108,79 @@ export default async function handler(req, res) {
           .limit(50)
           .lean();
         
-        console.log(`✅ Fetched ${posts.length} posts`);
         return res.status(200).json(posts);
       } catch (error) {
-        console.error('❌ Error fetching posts:', error);
+        console.error('Error fetching posts:', error);
         return res.status(500).json({ 
-          error: 'Failed to fetch posts',
-          message: error.message 
+          error: 'Failed to fetch posts: ' + error.message
         });
       }
     }
 
-    // POST - Upload new post
+    // POST - Upload
     if (req.method === 'POST') {
       return new Promise((resolve) => {
         const form = formidable({
-          maxFileSize: 10 * 1024 * 1024, // 10MB
+          maxFileSize: 10 * 1024 * 1024,
           keepExtensions: true,
-          multiples: false,
         });
 
         form.parse(req, async (err, fields, files) => {
           if (err) {
-            console.error('❌ Form parsing error:', err);
-            res.status(400).json({ 
-              error: 'Failed to parse upload',
-              message: err.message 
-            });
+            console.error('Form parse error:', err);
+            res.status(400).json({ error: 'Failed to parse upload: ' + err.message });
             return resolve();
           }
 
           try {
-            // Extract fields
             const username = Array.isArray(fields.username) ? fields.username[0] : fields.username;
             const hotelName = Array.isArray(fields.hotelName) ? fields.hotelName[0] : fields.hotelName;
             const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
 
-            // Validation
             if (!username || !hotelName) {
-              res.status(400).json({ error: 'Username and hotel name are required' });
+              res.status(400).json({ error: 'Username and hotel name required' });
               return resolve();
             }
 
             if (!imageFile || !imageFile.filepath) {
-              res.status(400).json({ error: 'Image file is required' });
+              res.status(400).json({ error: 'Image file required' });
               return resolve();
             }
 
-            console.log('📤 Uploading to Cloudinary...', {
-              file: imageFile.originalFilename,
-              size: imageFile.size,
-              type: imageFile.mimetype
-            });
-
-            // Upload to Cloudinary
-            const uploadResult = await cloudinary.uploader.upload(imageFile.filepath, {
-              resource_type: 'auto',
-              upload_preset: 'ml_default', // Use default preset
-              transformation: [
-                { width: 1000, height: 1000, crop: 'limit' },
-                { quality: 'auto:good', fetch_format: 'auto' }
-              ]
-            });
-
-            console.log('✅ Cloudinary upload successful:', uploadResult.secure_url);
+            console.log('Uploading to ImgBB...');
+            
+            // Upload to ImgBB
+            const imageUrl = await uploadToImgBB(imageFile.filepath);
+            
+            console.log('Upload successful:', imageUrl);
 
             // Save to MongoDB
             const newPost = new Post({
               username: username.trim(),
               hotelName: hotelName.trim(),
-              imageUrl: uploadResult.secure_url
+              imageUrl: imageUrl
             });
 
             await newPost.save();
-            console.log('✅ Post saved to MongoDB:', newPost._id);
+            console.log('Saved to MongoDB');
 
-            // Cleanup temp file
+            // Cleanup
             try {
               if (fs.existsSync(imageFile.filepath)) {
                 fs.unlinkSync(imageFile.filepath);
               }
-            } catch (cleanupError) {
-              console.log('⚠️ Temp file cleanup skipped');
-            }
+            } catch (e) {}
 
-            // Success response
             res.status(201).json({
               success: true,
               post: newPost
             });
             resolve();
 
-          } catch (uploadError) {
-            console.error('❌ Upload error:', uploadError);
-            
-            let errorMessage = 'Upload failed';
-            
-            if (uploadError.http_code) {
-              errorMessage = `Cloudinary error (${uploadError.http_code}): ${uploadError.message}`;
-            } else if (uploadError.message) {
-              errorMessage = uploadError.message;
-            }
-
+          } catch (error) {
+            console.error('Upload error:', error);
             res.status(500).json({ 
-              error: errorMessage,
-              details: uploadError.error?.message || 'Unknown error'
+              error: error.message || 'Upload failed'
             });
             resolve();
           }
@@ -185,14 +188,12 @@ export default async function handler(req, res) {
       });
     }
 
-    // Method not allowed
     return res.status(405).json({ error: 'Method not allowed' });
 
   } catch (error) {
-    console.error('❌ Handler error:', error);
+    console.error('Handler error:', error);
     return res.status(500).json({ 
-      error: 'Server error',
-      message: error.message 
+      error: error.message || 'Server error'
     });
   }
 }
