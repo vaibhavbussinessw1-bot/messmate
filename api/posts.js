@@ -54,15 +54,41 @@ const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 // Handle POST request
 app.post('/api/posts', upload.single('image'), async (req, res) => {
   try {
+    console.log('POST /api/posts - Start');
+    console.log('Body:', req.body);
+    console.log('File:', req.file ? 'File received' : 'No file');
+    
     await connectToDatabase();
+    console.log('DB connected');
+    
     const { username, hotelName } = req.body;
-    if (!req.file) return res.status(400).json({ error: 'No image' });
-    const post = new Post({ username, hotelName, imageUrl: req.file.path });
+    
+    if (!username || !hotelName) {
+      return res.status(400).json({ error: 'Username and hotel name required' });
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+    
+    console.log('Creating post with image:', req.file.path);
+    const post = new Post({ 
+      username, 
+      hotelName, 
+      imageUrl: req.file.path 
+    });
+    
     await post.save();
+    console.log('Post saved successfully');
+    
     res.status(201).json(post);
   } catch (error) {
     console.error('Post error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: error.message,
+      details: error.toString()
+    });
   }
 });
 
